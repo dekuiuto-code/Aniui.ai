@@ -1,40 +1,20 @@
-from flask import Flask, jsonify, request
-
-app = Flask(__name__)
-
-# This is the memory of your AI
-data_store = {
-    "switches": {
-        "power": 0,      # 0 for Off, 1 for On
-        "ui_style": "glass",
-        "dev_mode": 1
-    },
-    "last_voice": "Waiting for command..."
-}
-
-@app.route('/', methods=['GET'])
-def home():
-    return jsonify({"status": "ANI-UI AI Online", "data": data_store})
-
-# Endpoint for KLWP to read data
-@app.route('/get_data', methods=['GET'])
-def get_data():
-    return jsonify(data_store)
-
-# Endpoint for Voice/Tasker to send instructions
-@app.route('/voice_cmd', methods=['POST'])
+@app.route('/voice_cmd', methods=['GET', 'POST'])
 def voice_cmd():
-    incoming = request.json.get("command", "").lower()
-    data_store["last_voice"] = incoming
-    
-    # Simple logic for switches
-    if "system on" in incoming:
-        data_store["switches"]["power"] = 1
-    elif "system off" in incoming:
-        data_store["switches"]["power"] = 0
-        
-    return jsonify({"status": "success", "executed": incoming})
+    # 1. Try to get command from URL (for KLWP Web Get)
+    # 2. Try to get command from JSON (for Tasker/Assistant)
+    command = request.args.get('command') or ""
+    if not command and request.is_json:
+        command = request.json.get('command', "")
 
-if __name__ == "__main__":
-    app.run(host='0.0.0.0', port=5000)
-           
+    command = command.lower()
+
+    # Your AI Logic
+    if "system on" in command:
+        data_store["switches"]["power"] = 1
+        data_store["last_voice"] = "System Activated"
+    elif "glass mode" in command:
+        data_store["ui_style"] = "glass"
+        data_store["last_voice"] = "Applying Glassmorphism"
+
+    return jsonify(data_store)
+    
